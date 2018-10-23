@@ -1,11 +1,11 @@
 {
   "name": "@pillarwallet/common-middleware",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Common middleware for Node.js apps",
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
-    "test:unit": "jest",
+    "test:unit": "jest unit --verbose",
     "test": "npm run lint && npm run test:unit"
   },
   "publishConfig": {
@@ -24,8 +24,13 @@
   "jest": {
     "testEnvironment": "node"
   },
-  "devDependencies": {
+  "dependencies": {
+    "@pillarwallet/plr-auth-sdk": "1.1.2-84",
     "boom": "7.2.0",
+    "elliptic": "^6.4.1",
+    "uuid": "3.3.2"
+  },
+  "devDependencies": {
     "eslint": "4.19.1",
     "eslint-config-airbnb-base": "13.0.0",
     "eslint-config-prettier": "2.9.0",

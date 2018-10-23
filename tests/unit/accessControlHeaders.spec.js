@@ -1,4 +1,4 @@
-const accessControlHeaders = require('../lib/accessControlHeaders');
+const accessControlHeaders = require('../../lib/accessControlHeaders');
 
 describe('Access Control Headers middleware', () => {
   const req = {};
