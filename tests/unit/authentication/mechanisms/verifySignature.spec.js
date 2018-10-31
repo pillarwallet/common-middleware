@@ -1,6 +1,8 @@
-const { sign, verify } = require('@pillarwallet/plr-auth-sdk');
+const { sign } = require('@pillarwallet/plr-auth-sdk');
 const uuid = require('uuid/v4');
 const EC = require('elliptic').ec;
+const boom = require('boom');
+const verify = require('../../../../lib/authentication/mechanisms/verifySignature');
 
 const ecSecp256k1 = new EC('secp256k1');
 
@@ -28,25 +30,25 @@ describe('The Verify Signature function', () => {
 
   describe('when verifying a payload', () => {
     it('should successfully verify a payload when valid data supplied', () => {
-      const fusedPayload = {
-        ...payloadToBeSigned,
-        signature: signedPayload.signature,
-      };
-
-      const verificationResult = verify(fusedPayload, publicKey);
+      const verificationResult = verify(
+        signedPayload.signature,
+        publicKey,
+        payloadToBeSigned,
+      );
 
       expect(verificationResult).toBe(true);
     });
 
     it('should fail to verify a payload when invalid signature provided', () => {
-      const fusedPayload = {
-        ...payloadToBeSigned,
-        signature: 'something else',
-      };
+      const verificationResult = verify(
+        'some signature',
+        publicKey,
+        payloadToBeSigned,
+      );
 
-      expect(() => {
-        verify(fusedPayload, publicKey);
-      }).toThrow();
+      expect(verificationResult).toEqual(
+        boom.unauthorized('Signature verification failed.'),
+      );
     });
 
     it('should fail to verify a payload when invalid data provided', () => {
@@ -58,7 +60,9 @@ describe('The Verify Signature function', () => {
 
       const verificationResult = verify(fusedPayload, publicKey);
 
-      expect(verificationResult).toBe(false);
+      expect(verificationResult).toEqual(
+        boom.unauthorized('Signature verification failed.'),
+      );
     });
   });
 });

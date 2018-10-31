@@ -44,6 +44,7 @@ describe('The Authentication Middleware', () => {
     authenticationMiddleware(req, {}, next);
 
     expect(next).toHaveBeenCalled();
+    expect(next.mock.calls[0][0]).toBeUndefined();
     expect(verifySignature).toHaveBeenCalledWith(
       signedPayload.signature,
       publicKey,
