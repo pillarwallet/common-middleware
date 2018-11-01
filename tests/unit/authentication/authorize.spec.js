@@ -76,4 +76,38 @@ describe('The Authentication Middleware', () => {
 
     expect(next).toHaveBeenCalledWith(boom.badRequest('No wallet data found.'));
   });
+
+  it('should return a the authentication result when authorisation failed', () => {
+    const req = {
+      get: jest.fn(() => `${signedPayload.signature}x`), // Demonstration purposes only
+      walletData: {
+        publicKey: `${publicKey}`,
+      },
+      body: payloadToBeSigned,
+    };
+    const unauthorizedError = boom.unauthorized(
+      'Signature verification failed.',
+    );
+
+    verifySignature.mockImplementationOnce(() => unauthorizedError);
+
+    authenticationMiddleware(req, {}, next);
+    expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
+  });
+
+  it('should fall through to a vanilla 401 if no signature found', () => {
+    const req = {
+      get: jest.fn(() => null),
+      walletData: {
+        publicKey: `${publicKey}`,
+      },
+      body: payloadToBeSigned,
+    };
+    const unauthorizedError = boom.unauthorized();
+
+    verifySignature.mockImplementationOnce(() => unauthorizedError);
+
+    authenticationMiddleware(req, {}, next);
+    expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
+  });
 });
