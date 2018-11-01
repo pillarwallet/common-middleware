@@ -52,16 +52,45 @@ describe('The Verify Signature function', () => {
     });
 
     it('should fail to verify a payload when invalid data provided', () => {
-      const fusedPayload = {
+      const incorrectPayload = {
         ...payloadToBeSigned,
-        something: true,
-        signature: signedPayload.signature,
+        rogueProperty: true,
       };
 
-      const verificationResult = verify(fusedPayload, publicKey);
+      const verificationResult = verify(
+        signedPayload,
+        publicKey,
+        incorrectPayload,
+      );
 
       expect(verificationResult).toEqual(
         boom.unauthorized('Signature verification failed.'),
+      );
+    });
+
+    it('should fail when missing required public key parameter', () => {
+      const verificationResult = verify(signedPayload);
+
+      expect(verificationResult).toEqual(
+        boom.badRequest('No public key found.'),
+      );
+    });
+
+    it('should fail when missing required signature parameter', () => {
+      const verificationResult = verify(undefined, signedPayload);
+
+      expect(verificationResult).toEqual(
+        boom.badRequest('No signature found.'),
+      );
+    });
+
+    it('should fail when missing all parameters', () => {
+      const verificationResult = verify();
+
+      expect(verificationResult).toEqual(
+        boom.badRequest(
+          'No public key or signature found. Both of these are required to verify a payload against a signature.',
+        ),
       );
     });
   });
