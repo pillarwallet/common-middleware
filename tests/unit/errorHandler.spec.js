@@ -1,5 +1,5 @@
 const boom = require('boom');
-const errorHandler = require('../lib/errorHandler');
+const errorHandler = require('../../lib/errorHandler');
 
 describe('Error handler', () => {
   const req = {};

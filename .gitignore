@@ -1,3 +1,6 @@
+# NPM authentication file
+.npmrc
+
 # Logs
 logs
 *.log
