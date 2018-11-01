@@ -3,7 +3,7 @@ const uuid = require('uuid/v4');
 const EC = require('elliptic').ec;
 const boom = require('boom');
 
-const authenticationMiddleware = require('../../../lib/authentication/authorize');
+const authenticationMiddleware = require('../../../lib/authentication/authorize')();
 const verifySignature = require('../../../lib/authentication/mechanisms/verifySignature');
 
 jest.mock('../../../lib/authentication/mechanisms/verifySignature');
