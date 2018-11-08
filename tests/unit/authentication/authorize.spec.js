@@ -40,7 +40,7 @@ describe('The Authentication Middleware', () => {
       next = jest.fn();
     });
 
-    it('should successfully call the verifySignature module when a signature was found in the header', () => {
+    it('successfully call the verifySignature module when a signature was found in the header', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'X-API-Signature') {
@@ -66,7 +66,7 @@ describe('The Authentication Middleware', () => {
       );
     });
 
-    it('should return a 401 when no signature found', () => {
+    it('returns a 401 when no signature found', () => {
       const req = {
         get: jest.fn(() => null),
         walletData: {
@@ -80,7 +80,7 @@ describe('The Authentication Middleware', () => {
       expect(next).toHaveBeenCalledWith(boom.unauthorized());
     });
 
-    it('should return a 400 when no wallet data was found', () => {
+    it('returns a 400 when no wallet data was found', () => {
       const req = {
         get: jest.fn(() => null),
         body: payloadToBeSigned,
@@ -93,7 +93,7 @@ describe('The Authentication Middleware', () => {
       );
     });
 
-    it('should return a the authentication result when authorisation failed', () => {
+    it('returns a the authentication result when authorisation failed', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'X-API-Signature') {
@@ -114,10 +114,11 @@ describe('The Authentication Middleware', () => {
       verifySignature.mockImplementationOnce(() => unauthorizedError);
 
       authenticationMiddleware(req, {}, next);
+
       expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
     });
 
-    it('should fall through to a vanilla 401 if no signature found', () => {
+    it('falls through to a vanilla 401 if no signature found', () => {
       const req = {
         get: jest.fn(() => null),
         walletData: {
@@ -130,12 +131,37 @@ describe('The Authentication Middleware', () => {
       verifySignature.mockImplementationOnce(() => unauthorizedError);
 
       authenticationMiddleware(req, {}, next);
+
       expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
     });
   });
 
   describe('When authorising a token', () => {
-    it('should call the verifyJwt module when an Authorize header found', () => {
+    beforeEach(() => {
+      verifyJwt.mockClear();
+    });
+
+    it('calls the verifyJwt module when an Authorize header found', () => {
+      const req = {
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+          }
+
+          return null;
+        }),
+        oAuthPublicKey: 'somethingsecret',
+        walletData: {
+          publicKey: `${publicKey}`,
+        },
+      };
+
+      authenticationMiddleware(req, {}, next);
+
+      expect(verifyJwt).toHaveBeenCalled();
+    });
+
+    it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -151,7 +177,28 @@ describe('The Authentication Middleware', () => {
 
       authenticationMiddleware(req, {}, next);
 
-      expect(verifyJwt).toHaveBeenCalled();
+      expect(verifyJwt).not.toHaveBeenCalled();
+    });
+
+    it('returns a 500 message when missing the `oAuthPublicKey` property', () => {
+      const req = {
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+          }
+
+          return null;
+        }),
+        walletData: {
+          publicKey: `${publicKey}`,
+        },
+      };
+
+      authenticationMiddleware(req, {}, next);
+
+      expect(next.mock.calls[0][0]).toEqual(
+        boom.internal('No OAuth public key found!'),
+      );
     });
   });
 });
