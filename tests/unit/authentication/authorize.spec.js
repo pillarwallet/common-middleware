@@ -42,7 +42,13 @@ describe('The Authentication Middleware', () => {
 
     it('should successfully call the verifySignature module when a signature was found in the header', () => {
       const req = {
-        get: jest.fn(() => signedPayload.signature),
+        get: jest.fn(key => {
+          if (key === 'X-API-Signature') {
+            return signedPayload.signature;
+          }
+
+          return null;
+        }),
         walletData: {
           publicKey,
         },
@@ -89,7 +95,13 @@ describe('The Authentication Middleware', () => {
 
     it('should return a the authentication result when authorisation failed', () => {
       const req = {
-        get: jest.fn(() => `${signedPayload.signature}x`), // Demonstration purposes only
+        get: jest.fn(key => {
+          if (key === 'X-API-Signature') {
+            return `${signedPayload.signature}x`; // Demonstration purposes only
+          }
+
+          return null;
+        }),
         walletData: {
           publicKey: `${publicKey}`,
         },
@@ -125,7 +137,16 @@ describe('The Authentication Middleware', () => {
   describe('When authorising a token', () => {
     it('should call the verifyJwt module when an Authorize header found', () => {
       const req = {
-        get: jest.fn(() => 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k'),
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+          }
+
+          return null;
+        }),
+        walletData: {
+          publicKey: `${publicKey}`,
+        },
       };
 
       authenticationMiddleware(req, {}, next);
