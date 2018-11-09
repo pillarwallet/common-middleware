@@ -3,7 +3,7 @@ const boom = require('boom');
 
 const verify = require('../../../../lib/authentication/mechanisms/verifyJwt');
 
-describe('The Verify JWT function', () => {
+describe.only('The Verify JWT function', () => {
   let token;
   const secret = 'amassivesecret';
   const payload = {
@@ -23,7 +23,7 @@ describe('The Verify JWT function', () => {
     });
   });
 
-  it('throws an error if unable to verify a JWT using an incorrect secret', () => {
+  it.only('throws an error if unable to verify a JWT using an incorrect secret', () => {
     const response = verify(token, 'incorrect secret');
     expect(response).toEqual(boom.unauthorized('invalid signature'));
   });

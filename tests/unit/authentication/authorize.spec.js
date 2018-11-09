@@ -3,7 +3,12 @@ const uuid = require('uuid/v4');
 const EC = require('elliptic').ec;
 const boom = require('boom');
 
-const authenticationMiddleware = require('../../../lib/authentication/authorize')();
+const authenticationMiddleware = require('../../../lib/authentication/authorize')(
+  {
+    oAuthPublicKey: 'abc123',
+  },
+);
+const authenticationMiddlewareNoPublicKey = require('../../../lib/authentication/authorize')();
 const verifySignature = require('../../../lib/authentication/mechanisms/verifySignature');
 const verifyJwt = require('../../../lib/authentication/mechanisms/verifyJwt');
 
@@ -36,11 +41,9 @@ describe('The Authentication Middleware', () => {
         else: uuid(),
       };
       signedPayload = sign(payloadToBeSigned, privateKey);
-
-      next = jest.fn();
     });
 
-    it('successfully call the verifySignature module when a signature was found in the header', () => {
+    it('successfully calls the verifySignature module when a signature is found in the header', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'X-API-Signature') {
@@ -103,7 +106,7 @@ describe('The Authentication Middleware', () => {
           return null;
         }),
         walletData: {
-          publicKey: `${publicKey}`,
+          publicKey,
         },
         body: payloadToBeSigned,
       };
@@ -122,7 +125,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(() => null),
         walletData: {
-          publicKey: `${publicKey}`,
+          publicKey,
         },
         body: payloadToBeSigned,
       };
@@ -141,7 +144,7 @@ describe('The Authentication Middleware', () => {
       verifyJwt.mockClear();
     });
 
-    it('calls the verifyJwt module when an Authorize header found', () => {
+    it('calls the verifyJwt module when an Authorization header found', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -152,7 +155,7 @@ describe('The Authentication Middleware', () => {
         }),
         oAuthPublicKey: 'somethingsecret',
         walletData: {
-          publicKey: `${publicKey}`,
+          publicKey,
         },
       };
 
@@ -171,11 +174,11 @@ describe('The Authentication Middleware', () => {
           return null;
         }),
         walletData: {
-          publicKey: `${publicKey}`,
+          publicKey,
         },
       };
 
-      authenticationMiddleware(req, {}, next);
+      authenticationMiddlewareNoPublicKey(req, {}, next);
 
       expect(verifyJwt).not.toHaveBeenCalled();
     });
@@ -190,11 +193,11 @@ describe('The Authentication Middleware', () => {
           return null;
         }),
         walletData: {
-          publicKey: `${publicKey}`,
+          publicKey,
         },
       };
 
-      authenticationMiddleware(req, {}, next);
+      authenticationMiddlewareNoPublicKey(req, {}, next);
 
       expect(next.mock.calls[0][0]).toEqual(
         boom.internal('No OAuth public key found!'),
