@@ -69,13 +69,29 @@ describe('The Verify JWT function', () => {
   });
 
   it('returns an error object if missing required `token` parameter', async () => {
-    const response = await verify();
+    let response;
+
+    await verify()
+      .then(decoded => {
+        response = decoded;
+      })
+      .catch(err => {
+        response = err;
+      });
 
     expect(response).toEqual(boom.badRequest('No token found.'));
   });
 
   it('returns an error object if missing required `secretOrPublicKey` parameter', async () => {
-    const response = await verify('some.random.token');
+    let response;
+
+    await verify('some.random.token')
+      .then(decoded => {
+        response = decoded;
+      })
+      .catch(err => {
+        response = err;
+      });
 
     expect(response).toEqual(boom.badRequest('No secret or public key found.'));
   });
