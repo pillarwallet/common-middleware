@@ -155,7 +155,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Authorization: Bearer: jk3b4jk32b4kb24jb2kb4hjk23b4hk23';
+            return 'Bearer: jk3b4jk32b4kb24jb2kb4hjk23b4hk23';
           }
 
           return null;
@@ -178,7 +178,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
@@ -199,7 +199,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
@@ -219,7 +219,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
@@ -241,7 +241,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
