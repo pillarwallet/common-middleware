@@ -238,9 +238,6 @@ describe('The Authentication Middleware', () => {
     });
 
     it('fires the next function with an error when verifyJwt throws', async () => {
-      const unauthorizedError = Promise.reject(
-        boom.unauthorized('Not allowed!'),
-      );
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -254,11 +251,13 @@ describe('The Authentication Middleware', () => {
         },
       };
 
-      verifyJwt.mockImplementationOnce(() => unauthorizedError);
+      verifyJwt.mockImplementationOnce(() =>
+        Promise.reject(boom.unauthorized('Not allowed!')),
+      );
 
       await authenticationMiddleware(req, {}, next);
 
-      expect(next.mock.calls[0][0]).toEqual('Not allowed!');
+      expect(next.mock.calls[0][0]).toEqual(boom.unauthorized('Not allowed!'));
       expect(verifySignature).not.toHaveBeenCalled();
     });
   });
