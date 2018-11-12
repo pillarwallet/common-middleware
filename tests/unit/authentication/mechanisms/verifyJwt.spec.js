@@ -3,7 +3,7 @@ const boom = require('boom');
 
 const verify = require('../../../../lib/authentication/mechanisms/verifyJwt');
 
-describe.only('The Verify JWT function', () => {
+describe('The Verify JWT function', () => {
   let token;
   const secret = 'amassivesecret';
   const payload = {
@@ -14,8 +14,8 @@ describe.only('The Verify JWT function', () => {
     token = jwt.sign(payload, secret);
   });
 
-  it('should successfully verify a JWT', () => {
-    const result = verify(token, secret);
+  it('should successfully verify a JWT', async () => {
+    const result = await verify(token, secret);
 
     expect(result).toEqual({
       ...payload,
@@ -23,32 +23,37 @@ describe.only('The Verify JWT function', () => {
     });
   });
 
-  it.only('throws an error if unable to verify a JWT using an incorrect secret', () => {
-    const response = verify(token, 'incorrect secret');
+  it('returns an error object if unable to verify a JWT using an incorrect secret', async () => {
+    const response = await verify(token, 'incorrect secret');
+
     expect(response).toEqual(boom.unauthorized('invalid signature'));
   });
 
-  it('throws an error if unable to verify a JWT using an incorrect token', () => {
-    const response = verify('some.botched.token', secret);
+  it('returns an error object if unable to verify a JWT using an incorrect token', async () => {
+    const response = await verify('some.botched.token', secret);
+
     expect(response).toEqual(boom.unauthorized('invalid token'));
   });
 
-  it('throws an error if the JWT has expired', () => {
+  it('returns an error object if the JWT has expired', async () => {
     const expiredToken = jwt.sign(payload, secret, {
       expiresIn: 0,
     });
 
-    const response = verify(expiredToken, secret);
+    const response = await verify(expiredToken, secret);
+
     expect(response).toEqual(boom.unauthorized('jwt expired'));
   });
 
-  it('throws an error if missing required `token` parameter', () => {
-    const response = verify();
+  it('returns an error object if missing required `token` parameter', async () => {
+    const response = await verify();
+
     expect(response).toEqual(boom.badRequest('No token found.'));
   });
 
-  it('throws an error if missing required `secretOrPublicKey` parameter', () => {
-    const response = verify('some.random.token');
+  it('returns an error object if missing required `secretOrPublicKey` parameter', async () => {
+    const response = await verify('some.random.token');
+
     expect(response).toEqual(boom.badRequest('No secret or public key found.'));
   });
 });
