@@ -68,6 +68,7 @@ describe('The Authentication Middleware', () => {
         publicKey,
         payloadToBeSigned,
       );
+      expect(verifyJwt).not.toHaveBeenCalled();
     });
 
     it('returns a 401 when no signature found', () => {
@@ -82,6 +83,7 @@ describe('The Authentication Middleware', () => {
       authenticationMiddleware(req, {}, next);
 
       expect(next).toHaveBeenCalledWith(boom.unauthorized());
+      expect(verifyJwt).not.toHaveBeenCalled();
     });
 
     it('returns a 400 when no wallet data was found', () => {
@@ -95,6 +97,7 @@ describe('The Authentication Middleware', () => {
       expect(next).toHaveBeenCalledWith(
         boom.badRequest('No wallet data found.'),
       );
+      expect(verifyJwt).not.toHaveBeenCalled();
     });
 
     it('returns a the authentication result when authorisation failed', () => {
@@ -120,6 +123,7 @@ describe('The Authentication Middleware', () => {
       authenticationMiddleware(req, {}, next);
 
       expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
+      expect(verifyJwt).not.toHaveBeenCalled();
     });
 
     it('falls through to a vanilla 401 if no signature found', () => {
@@ -137,12 +141,14 @@ describe('The Authentication Middleware', () => {
       authenticationMiddleware(req, {}, next);
 
       expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
+      expect(verifyJwt).not.toHaveBeenCalled();
     });
   });
 
   describe('When authorising a token', () => {
     beforeEach(() => {
       verifyJwt.mockClear();
+      verifySignature.mockClear();
     });
 
     it('fires the next function when verify funtion resolves successfully', async () => {
@@ -165,6 +171,7 @@ describe('The Authentication Middleware', () => {
       await authenticationMiddleware(req, {}, next);
 
       expect(next).toHaveBeenCalledWith(); // Just calls next().
+      expect(verifySignature).not.toHaveBeenCalled();
     });
 
     it('calls the verifyJwt module when an Authorization header found', async () => {
@@ -185,6 +192,7 @@ describe('The Authentication Middleware', () => {
       await authenticationMiddleware(req, {}, next);
 
       expect(verifyJwt).toHaveBeenCalled();
+      expect(verifySignature).not.toHaveBeenCalled();
     });
 
     it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', async () => {
@@ -204,6 +212,7 @@ describe('The Authentication Middleware', () => {
       await authenticationMiddlewareNoPublicKey(req, {}, next);
 
       expect(verifyJwt).not.toHaveBeenCalled();
+      expect(verifySignature).not.toHaveBeenCalled();
     });
 
     it('returns a 500 message when missing the `oAuthPublicKey` property', async () => {
@@ -225,6 +234,7 @@ describe('The Authentication Middleware', () => {
       expect(next.mock.calls[0][0]).toEqual(
         boom.internal('No OAuth public key found!'),
       );
+      expect(verifySignature).not.toHaveBeenCalled();
     });
 
     it('fires the next function with an error when verifyJwt throws', async () => {
@@ -249,6 +259,7 @@ describe('The Authentication Middleware', () => {
       await authenticationMiddleware(req, {}, next);
 
       expect(next.mock.calls[0][0]).toEqual('Not allowed!');
+      expect(verifySignature).not.toHaveBeenCalled();
     });
   });
 });
