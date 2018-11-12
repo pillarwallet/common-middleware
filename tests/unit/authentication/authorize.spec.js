@@ -3,17 +3,18 @@ const uuid = require('uuid/v4');
 const EC = require('elliptic').ec;
 const boom = require('boom');
 
-const authenticationMiddleware = require('../../../lib/authentication/authorize')(
-  {
-    oAuthPublicKey: 'abc123',
-  },
-);
-const authenticationMiddlewareNoPublicKey = require('../../../lib/authentication/authorize')();
+const authenticationMiddlewareSource = require('../../../lib/authentication/authorize');
+
 const verifySignature = require('../../../lib/authentication/mechanisms/verifySignature');
 const verifyJwt = require('../../../lib/authentication/mechanisms/verifyJwt');
 
 jest.mock('../../../lib/authentication/mechanisms/verifySignature');
 jest.mock('../../../lib/authentication/mechanisms/verifyJwt');
+
+const authenticationMiddleware = authenticationMiddlewareSource({
+  oAuthPublicKey: 'abc123',
+});
+const authenticationMiddlewareNoPublicKey = authenticationMiddlewareSource();
 
 const ecSecp256k1 = new EC('secp256k1');
 const keys = ecSecp256k1.genKeyPair();
