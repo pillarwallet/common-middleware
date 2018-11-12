@@ -24,23 +24,46 @@ describe('The Verify JWT function', () => {
   });
 
   it('returns an error object if unable to verify a JWT using an incorrect secret', async () => {
-    const response = await verify(token, 'incorrect secret');
+    let response;
+
+    await verify(token, 'incorrect secret')
+      .then(decoded => {
+        response = decoded;
+      })
+      .catch(err => {
+        response = err;
+      });
 
     expect(response).toEqual(boom.unauthorized('invalid signature'));
   });
 
   it('returns an error object if unable to verify a JWT using an incorrect token', async () => {
-    const response = await verify('some.botched.token', secret);
+    let response;
+
+    await verify('some.botched.token', secret)
+      .then(decoded => {
+        response = decoded;
+      })
+      .catch(err => {
+        response = err;
+      });
 
     expect(response).toEqual(boom.unauthorized('invalid token'));
   });
 
   it('returns an error object if the JWT has expired', async () => {
+    let response;
     const expiredToken = jwt.sign(payload, secret, {
       expiresIn: 0,
     });
 
-    const response = await verify(expiredToken, secret);
+    await verify(expiredToken, secret)
+      .then(decoded => {
+        response = decoded;
+      })
+      .catch(err => {
+        response = err;
+      });
 
     expect(response).toEqual(boom.unauthorized('jwt expired'));
   });

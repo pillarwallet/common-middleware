@@ -144,7 +144,29 @@ describe('The Authentication Middleware', () => {
       verifyJwt.mockClear();
     });
 
-    it('calls the verifyJwt module when an Authorization header found', () => {
+    it('fires the next function when verify funtion resolves successfully', async () => {
+      const req = {
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return 'Authorization: Bearer: jk3b4jk32b4kb24jb2kb4hjk23b4hk23';
+          }
+
+          return null;
+        }),
+        oAuthPublicKey: 'somemassivesecret',
+        walletData: {
+          publicKey,
+        },
+      };
+
+      verifyJwt.mockImplementationOnce(() => Promise.resolve());
+
+      await authenticationMiddleware(req, {}, next);
+
+      expect(next).toHaveBeenCalledWith(); // Just calls next().
+    });
+
+    it('calls the verifyJwt module when an Authorization header found', async () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -159,12 +181,12 @@ describe('The Authentication Middleware', () => {
         },
       };
 
-      authenticationMiddleware(req, {}, next);
+      await authenticationMiddleware(req, {}, next);
 
       expect(verifyJwt).toHaveBeenCalled();
     });
 
-    it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', () => {
+    it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', async () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -178,12 +200,12 @@ describe('The Authentication Middleware', () => {
         },
       };
 
-      authenticationMiddlewareNoPublicKey(req, {}, next);
+      await authenticationMiddlewareNoPublicKey(req, {}, next);
 
       expect(verifyJwt).not.toHaveBeenCalled();
     });
 
-    it('returns a 500 message when missing the `oAuthPublicKey` property', () => {
+    it('returns a 500 message when missing the `oAuthPublicKey` property', async () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -197,11 +219,35 @@ describe('The Authentication Middleware', () => {
         },
       };
 
-      authenticationMiddlewareNoPublicKey(req, {}, next);
+      await authenticationMiddlewareNoPublicKey(req, {}, next);
 
       expect(next.mock.calls[0][0]).toEqual(
         boom.internal('No OAuth public key found!'),
       );
+    });
+
+    it('fires the next function with an error when verifyJwt throws', async () => {
+      const unauthorizedError = Promise.reject(
+        boom.unauthorized('Not allowed!'),
+      );
+      const req = {
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return 'Authorization: Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+          }
+
+          return null;
+        }),
+        walletData: {
+          publicKey,
+        },
+      };
+
+      verifyJwt.mockImplementationOnce(() => unauthorizedError);
+
+      await authenticationMiddleware(req, {}, next);
+
+      expect(next.mock.calls[0][0]).toEqual('Not allowed!');
     });
   });
 });
