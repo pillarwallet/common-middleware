@@ -145,7 +145,7 @@ describe('The Authentication Middleware', () => {
     });
   });
 
-  describe('When verifynig a token', () => {
+  describe('When verifying a token', () => {
     beforeEach(() => {
       verifyJwt.mockClear();
       verifySignature.mockClear();
