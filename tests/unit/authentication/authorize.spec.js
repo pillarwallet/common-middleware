@@ -145,7 +145,7 @@ describe('The Authentication Middleware', () => {
     });
   });
 
-  describe('When authorising a token', () => {
+  describe('When verifying a token', () => {
     beforeEach(() => {
       verifyJwt.mockClear();
       verifySignature.mockClear();
@@ -172,6 +172,12 @@ describe('The Authentication Middleware', () => {
 
       expect(next).toHaveBeenCalledWith(); // Just calls next().
       expect(verifySignature).not.toHaveBeenCalled();
+
+      // Ensure that "Bearer: " was removed.
+      expect(verifyJwt).toHaveBeenCalledWith(
+        'jk3b4jk32b4kb24jb2kb4hjk23b4hk23',
+        'abc123',
+      );
     });
 
     it('calls the verifyJwt module when an Authorization header found', async () => {
@@ -191,7 +197,11 @@ describe('The Authentication Middleware', () => {
 
       await authenticationMiddleware(req, {}, next);
 
-      expect(verifyJwt).toHaveBeenCalled();
+      // Ensure that "Bearer: " was removed.
+      expect(verifyJwt).toHaveBeenCalledWith(
+        '1a2b3c3d4e5f6g7h8i9j0k',
+        'abc123',
+      );
       expect(verifySignature).not.toHaveBeenCalled();
     });
 
