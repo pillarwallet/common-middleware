@@ -155,7 +155,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Bearer: jk3b4jk32b4kb24jb2kb4hjk23b4hk23';
+            return 'Bearer jk3b4jk32b4kb24jb2kb4hjk23b4hk23';
           }
 
           return null;
@@ -173,7 +173,7 @@ describe('The Authentication Middleware', () => {
       expect(next).toHaveBeenCalledWith(); // Just calls next().
       expect(verifySignature).not.toHaveBeenCalled();
 
-      // Ensure that "Bearer: " was removed.
+      // Ensure that "Bearer " was removed.
       expect(verifyJwt).toHaveBeenCalledWith(
         'jk3b4jk32b4kb24jb2kb4hjk23b4hk23',
         'abc123',
@@ -184,7 +184,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
@@ -197,7 +197,7 @@ describe('The Authentication Middleware', () => {
 
       await authenticationMiddleware(req, {}, next);
 
-      // Ensure that "Bearer: " was removed.
+      // Ensure that "Bearer " was removed.
       expect(verifyJwt).toHaveBeenCalledWith(
         '1a2b3c3d4e5f6g7h8i9j0k',
         'abc123',
@@ -209,7 +209,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
@@ -229,7 +229,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
@@ -251,7 +251,7 @@ describe('The Authentication Middleware', () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
-            return 'Bearer: 1a2b3c3d4e5f6g7h8i9j0k';
+            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
           }
 
           return null;
