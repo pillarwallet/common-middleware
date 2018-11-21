@@ -12,6 +12,7 @@ describe('Error handler', () => {
 
   beforeEach(() => {
     logger.error = jest.fn();
+    logger.info = jest.fn();
   });
 
   afterEach(() => {
@@ -29,63 +30,101 @@ describe('Error handler', () => {
     expect(middleware).toHaveLength(4);
   });
 
-  it('logs the error payload when configured with a logger', () => {
-    const err = boom.internal('Secret error');
-
-    const middleware = errorHandler({ logger });
-    middleware(err, req, res, next);
-
-    expect(logger.error).toBeCalledWith({ err }, 'Error handler error');
-  });
-
-  it('does not throw an error when not configured with a logger with an error method', () => {
-    delete logger.error;
-    const middleware = errorHandler({ logger });
-    expect(() => middleware(boom.internal(), req, res, next)).not.toThrow();
-  });
-
   describe('middleware', () => {
     let middleware;
 
-    beforeEach(() => {
-      middleware = errorHandler();
-    });
-    /**
-     * JSend spec: https://labs.omniti.com/labs/jsend
-     */
-    it('responds with a JSend JSON response object', () => {
-      const err = boom.badRequest('Missing parameters');
-      middleware(err, req, res, next);
+    describe('when configured with a logger', () => {
+      beforeEach(() => {
+        middleware = errorHandler({ logger });
+      });
 
-      expect(res.status).toBeCalledWith(400);
-      expect(res.json).toBeCalledWith({
-        status: 'fail',
-        data: {
-          message: 'Missing parameters',
-        },
+      describe('for server errors (5xx)', () => {
+        it('logs at the error level', () => {
+          const err = boom.internal('Secret error');
+
+          middleware(err, req, res, next);
+
+          expect(logger.error).toBeCalledWith(
+            { err },
+            'Error handler server error',
+          );
+        });
+
+        it('does not throw an error when not configured with an error method', () => {
+          delete logger.error;
+
+          middleware = errorHandler({ logger });
+
+          expect(() =>
+            middleware(boom.internal(), req, res, next),
+          ).not.toThrow();
+        });
+      });
+
+      describe('for client errors (4xx)', () => {
+        it('logs at the info level', () => {
+          const err = boom.badRequest('Client error');
+
+          middleware(err, req, res, next);
+
+          expect(logger.info).toBeCalledWith(
+            { err },
+            'Error handler client error',
+          );
+        });
+
+        it('does not throw an error when not configured with an info method', () => {
+          delete logger.info;
+
+          middleware = errorHandler({ logger });
+
+          expect(() =>
+            middleware(boom.badRequest(), req, res, next),
+          ).not.toThrow();
+        });
       });
     });
 
-    it('exposes 400 range error messages', () => {
-      const message = 'This is useful client feedback.';
-      const err = boom.badRequest(message);
+    describe('responses', () => {
+      middleware = errorHandler();
 
-      middleware(err, req, res, next);
+      /**
+       * JSend spec: https://labs.omniti.com/labs/jsend
+       */
+      it('responds with a JSend JSON response object', () => {
+        const err = boom.badRequest('Missing parameters');
+        middleware(err, req, res, next);
 
-      expect(res.json.mock.calls[0][0].data.message).toBe(message);
-    });
+        expect(res.status).toBeCalledWith(400);
+        expect(res.json).toBeCalledWith({
+          status: 'fail',
+          data: {
+            message: 'Missing parameters',
+          },
+        });
+      });
 
-    it('uses generic messages for 500 range errors', () => {
-      const err = boom.internal('Error message for logging purposes');
+      it('exposes 400 range error messages', () => {
+        const message = 'This is useful client feedback.';
+        const err = boom.badRequest(message);
 
-      middleware(err, req, res, next);
+        middleware(err, req, res, next);
 
-      expect(res.status).toBeCalledWith(500);
-      expect(res.json).toBeCalledWith({
-        status: 'fail',
-        data: {
-          message: 'Internal Server Error',
-        },
+        expect(res.json.mock.calls[0][0].data.message).toBe(message);
+      });
+
+      it('uses generic messages for 500 range errors', () => {
+        const err = boom.internal('Error message for logging purposes');
+
+        middleware(err, req, res, next);
+
+        expect(res.status).toBeCalledWith(500);
+        expect(res.json).toBeCalledWith({
+          status: 'fail',
+          data: {
+            message: 'Internal Server Error',
+          },
+        });
       });
     });
   });
