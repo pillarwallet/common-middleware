@@ -2,8 +2,9 @@ const { sign } = require('@pillarwallet/plr-auth-sdk');
 const uuid = require('uuid/v4');
 const EC = require('elliptic').ec;
 const boom = require('boom');
+const jwt = require('jsonwebtoken');
 
-const authenticationMiddlewareSource = require('../../../lib/authentication/authorize');
+const authenticationMiddlewareSource = require('../../../lib/authentication/authenticate');
 
 const verifySignature = require('../../../lib/authentication/mechanisms/verifySignature');
 const verifyJwt = require('../../../lib/authentication/mechanisms/verifyJwt');
@@ -166,7 +167,7 @@ describe('The Authentication Middleware', () => {
         },
       };
 
-      verifyJwt.mockImplementationOnce(() => Promise.resolve());
+      verifyJwt.mockImplementationOnce(() => Promise.resolve({ uuid: 'uuid' }));
 
       await authenticationMiddleware(req, {}, next);
 
@@ -203,6 +204,46 @@ describe('The Authentication Middleware', () => {
         'abc123',
       );
       expect(verifySignature).not.toHaveBeenCalled();
+    });
+
+    it('adds username to request object when JWT verification is successful', async () => {
+      const username = 'unique-username';
+      const token = jwt.sign({ uuid: username }, 'abc123');
+      const req = {
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return `Bearer ${token}`;
+          }
+          return null;
+        }),
+        walletData: {},
+      };
+      const setUsername = jest.fn();
+
+      Object.defineProperty(req, 'username', {
+        set: setUsername,
+      });
+
+      verifyJwt.mockImplementationOnce((...args) =>
+        Promise.resolve(
+          require.requireActual(
+            '../../../lib/authentication/mechanisms/verifyJwt',
+          )(...args),
+        ),
+      );
+
+      await authenticationMiddleware(req, {}, next);
+
+      expect(setUsername.mock.calls[0][0]).toBe(username);
+      expect(next).toHaveBeenCalledWith();
+
+      // Check call order
+      const [verifyCallIdx] = verifyJwt.mock.invocationCallOrder;
+      const [setUsernameIdx] = setUsername.mock.invocationCallOrder;
+      const [nextCallIdx] = next.mock.invocationCallOrder;
+
+      expect(verifyCallIdx).toBeLessThan(setUsernameIdx);
+      expect(setUsernameIdx).toBeLessThan(nextCallIdx);
     });
 
     it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', async () => {

@@ -1,9 +1,9 @@
 const accessControlHeaders = require('./lib/accessControlHeaders');
 const errorHandler = require('./lib/errorHandler');
-const authorize = require('./lib/authentication/authorize');
+const authenticate = require('./lib/authentication/authenticate');
 
 module.exports = {
   accessControlHeaders,
-  authorize,
+  authenticate,
   errorHandler,
 };
