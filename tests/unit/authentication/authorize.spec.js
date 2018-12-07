@@ -1,274 +1,210 @@
-const { sign } = require('@pillarwallet/plr-auth-sdk');
-const uuid = require('uuid/v4');
-const EC = require('elliptic').ec;
 const boom = require('boom');
+const authorize = require('../../../lib/authentication/authorize');
 
-const authenticationMiddlewareSource = require('../../../lib/authentication/authorize');
-
-const verifySignature = require('../../../lib/authentication/mechanisms/verifySignature');
-const verifyJwt = require('../../../lib/authentication/mechanisms/verifyJwt');
-
-jest.mock('../../../lib/authentication/mechanisms/verifySignature');
-jest.mock('../../../lib/authentication/mechanisms/verifyJwt');
-
-const authenticationMiddleware = authenticationMiddlewareSource({
-  oAuthPublicKey: 'abc123',
-});
-const authenticationMiddlewareNoPublicKey = authenticationMiddlewareSource();
-
-const ecSecp256k1 = new EC('secp256k1');
-const keys = ecSecp256k1.genKeyPair();
-const privateKey = keys.getPrivate().toString('hex');
-const publicKey = keys.getPublic().encode('hex');
-
-describe('The Authentication Middleware', () => {
-  let next;
-
-  beforeEach(() => {
-    next = jest.fn();
-  });
+describe('Authorize', () => {
+  const logger = {
+    error: jest.fn(),
+    warn: jest.fn(),
+  };
+  const User = {
+    findOne: jest.fn(),
+  };
+  const Wallet = {
+    findOne: jest.fn(),
+  };
+  const options = {
+    logger,
+    models: {
+      User,
+      Wallet,
+    },
+  };
 
   afterEach(() => {
-    next.mockClear();
+    logger.error.mockClear();
+    logger.warn.mockClear();
   });
 
-  describe('When authorising a signature', () => {
-    let payloadToBeSigned;
-    let signedPayload;
-
-    beforeEach(() => {
-      payloadToBeSigned = {
-        something: uuid(),
-        else: uuid(),
-      };
-      signedPayload = sign(payloadToBeSigned, privateKey);
-    });
-
-    it('successfully calls the verifySignature module when a signature is found in the header', () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'X-API-Signature') {
-            return signedPayload.signature;
-          }
-
-          return null;
-        }),
-        walletData: {
-          publicKey,
-        },
-        body: payloadToBeSigned,
-      };
-
-      authenticationMiddleware(req, {}, next);
-
-      expect(next).toHaveBeenCalled();
-      expect(next.mock.calls[0][0]).toBeUndefined();
-      expect(verifySignature).toHaveBeenCalledWith(
-        signedPayload.signature,
-        publicKey,
-        payloadToBeSigned,
-      );
-      expect(verifyJwt).not.toHaveBeenCalled();
-    });
-
-    it('returns a 401 when no signature found', () => {
-      const req = {
-        get: jest.fn(() => null),
-        walletData: {
-          publicKey,
-        },
-        body: payloadToBeSigned,
-      };
-
-      authenticationMiddleware(req, {}, next);
-
-      expect(next).toHaveBeenCalledWith(boom.unauthorized());
-      expect(verifyJwt).not.toHaveBeenCalled();
-    });
-
-    it('returns a 400 when no wallet data was found', () => {
-      const req = {
-        get: jest.fn(() => null),
-        body: payloadToBeSigned,
-      };
-
-      authenticationMiddleware(req, {}, next);
-
-      expect(next).toHaveBeenCalledWith(
-        boom.badRequest('No wallet data found.'),
-      );
-      expect(verifyJwt).not.toHaveBeenCalled();
-    });
-
-    it('returns a the authentication result when authorisation failed', () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'X-API-Signature') {
-            return `${signedPayload.signature}x`; // Demonstration purposes only
-          }
-
-          return null;
-        }),
-        walletData: {
-          publicKey,
-        },
-        body: payloadToBeSigned,
-      };
-      const unauthorizedError = boom.unauthorized(
-        'Signature verification failed.',
-      );
-
-      verifySignature.mockImplementationOnce(() => unauthorizedError);
-
-      authenticationMiddleware(req, {}, next);
-
-      expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
-      expect(verifyJwt).not.toHaveBeenCalled();
-    });
-
-    it('falls through to a vanilla 401 if no signature found', () => {
-      const req = {
-        get: jest.fn(() => null),
-        walletData: {
-          publicKey,
-        },
-        body: payloadToBeSigned,
-      };
-      const unauthorizedError = boom.unauthorized();
-
-      verifySignature.mockImplementationOnce(() => unauthorizedError);
-
-      authenticationMiddleware(req, {}, next);
-
-      expect(next.mock.calls[0][0]).toEqual(unauthorizedError);
-      expect(verifyJwt).not.toHaveBeenCalled();
-    });
+  it('is a function', () => {
+    expect(typeof authorize).toBe('function');
   });
 
-  describe('When verifying a token', () => {
+  it('throws an error when not constructed with logger and models', () => {
+    expect.assertions(2);
+
+    try {
+      authorize();
+    } catch (e) {
+      expect(e).toBeInstanceOf(Error);
+      expect(e.message).toBe(
+        'logger, models.User and models.Wallet are required',
+      );
+    }
+  });
+
+  it('returns middleware', () => {
+    expect(authorize(options)).toHaveLength(3);
+  });
+
+  describe('middleware', () => {
+    const userId = 'user-id';
+    const username = 'username';
+    const user = {
+      id: userId,
+      username,
+    };
+    const wallet = {
+      id: 'wallet-id',
+      userId,
+    };
+    const res = {};
+    const next = jest.fn();
+    const middleware = authorize(options);
+
+    let req;
+
     beforeEach(() => {
-      verifyJwt.mockClear();
-      verifySignature.mockClear();
+      req = {
+        get: key => {
+          if (key === 'Authorization') {
+            return 'Bearer foo';
+          }
+          return undefined;
+        },
+        username,
+      };
+      User.findOne.mockImplementation(() => Promise.resolve(user));
+      Wallet.findOne.mockImplementation(() => Promise.resolve(wallet));
     });
 
-    it('fires the next function when verify funtion resolves successfully', async () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'Authorization') {
-            return 'Bearer jk3b4jk32b4kb24jb2kb4hjk23b4hk23';
-          }
+    afterEach(() => {
+      next.mockClear();
+      User.findOne.mockClear();
+      Wallet.findOne.mockClear();
+    });
 
-          return null;
-        }),
-        oAuthPublicKey: 'somemassivesecret',
-        walletData: {
-          publicKey,
+    it('calls next', async () => {
+      await middleware(req, res, next);
+
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith();
+    });
+
+    it('adds `userData` to the request object', async () => {
+      await middleware(req, res, next);
+
+      expect(req.userData).toBe(user);
+    });
+
+    it('adds `walletData` to the request object', async () => {
+      await middleware(req, res, next);
+
+      expect(req.walletData).toBe(wallet);
+    });
+
+    it('replaces `walletData` on the request object when it exists', async () => {
+      req.walletData = {
+        id: 'another-wallet-id',
+        userId: 'another-user-id',
+      };
+
+      await middleware(req, res, next);
+
+      expect(req.walletData).toBe(wallet);
+    });
+
+    it('calls next when `Authorization` header is not set', async () => {
+      req.get = () => null;
+
+      middleware(req, res, next);
+
+      expect(next).toBeCalledTimes(1);
+      expect(next).toBeCalledWith();
+    });
+
+    it('calls next with an unauthorized error when `Authorization` header is set and there is no `username`', () => {
+      /**
+       * `username` should be set by authenticate middleware
+       */
+      req = {
+        get: key => {
+          if (key === 'Authorization') {
+            return 'Bearer foo';
+          }
+          return undefined;
         },
       };
 
-      verifyJwt.mockImplementationOnce(() => Promise.resolve());
+      middleware(req, res, next);
 
-      await authenticationMiddleware(req, {}, next);
-
-      expect(next).toHaveBeenCalledWith(); // Just calls next().
-      expect(verifySignature).not.toHaveBeenCalled();
-
-      // Ensure that "Bearer " was removed.
-      expect(verifyJwt).toHaveBeenCalledWith(
-        'jk3b4jk32b4kb24jb2kb4hjk23b4hk23',
-        'abc123',
-      );
+      expect(next).toBeCalledTimes(1);
+      expect(next).toBeCalledWith(boom.unauthorized());
     });
 
-    it('calls the verifyJwt module when an Authorization header found', async () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'Authorization') {
-            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
-          }
+    describe('when user cannot be found', () => {
+      beforeEach(async () => {
+        User.findOne.mockImplementationOnce(() => Promise.resolve(null));
 
-          return null;
-        }),
-        oAuthPublicKey: 'somethingsecret',
-        walletData: {
-          publicKey,
-        },
-      };
+        await middleware(req, res, next);
+      });
 
-      await authenticationMiddleware(req, {}, next);
+      it('logs a warning', () => {
+        expect(logger.warn).toHaveBeenCalledWith(
+          { username },
+          'User record not found',
+        );
+      });
 
-      // Ensure that "Bearer " was removed.
-      expect(verifyJwt).toHaveBeenCalledWith(
-        '1a2b3c3d4e5f6g7h8i9j0k',
-        'abc123',
-      );
-      expect(verifySignature).not.toHaveBeenCalled();
+      it('calls next with an unauthorized error', async () => {
+        expect(User.findOne).toBeCalledTimes(1);
+        expect(next).toBeCalledTimes(1);
+        expect(next).toHaveBeenCalledWith(boom.unauthorized());
+      });
     });
 
-    it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', async () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'Authorization') {
-            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
-          }
+    describe('when wallet cannot be found', () => {
+      beforeEach(async () => {
+        Wallet.findOne.mockImplementationOnce(() => Promise.resolve(null));
 
-          return null;
-        }),
-        walletData: {
-          publicKey,
-        },
-      };
+        await middleware(req, res, next);
+      });
 
-      await authenticationMiddlewareNoPublicKey(req, {}, next);
+      it('logs a warning', () => {
+        expect(logger.warn).toHaveBeenCalledWith(
+          { userId },
+          'Wallet record not found',
+        );
+      });
 
-      expect(verifyJwt).not.toHaveBeenCalled();
-      expect(verifySignature).not.toHaveBeenCalled();
+      it('calls next with an unauthorized error', async () => {
+        expect(Wallet.findOne).toBeCalledTimes(1);
+        expect(next).toBeCalledTimes(1);
+        expect(next).toHaveBeenCalledWith(boom.unauthorized());
+      });
     });
 
-    it('returns a 500 message when missing the `oAuthPublicKey` property', async () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'Authorization') {
-            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
-          }
+    describe('when database lookup fails', () => {
+      beforeEach(async () => {
+        User.findOne.mockImplementationOnce(() =>
+          Promise.reject(new Error('User lookup failed')),
+        );
 
-          return null;
-        }),
-        walletData: {
-          publicKey,
-        },
-      };
+        await middleware(req, res, next);
+      });
 
-      await authenticationMiddlewareNoPublicKey(req, {}, next);
+      it('logs error', () => {
+        expect(logger.error).toHaveBeenCalledWith(
+          new Error('User lookup failed'),
+          'Authorize middleware: Database lookup failed',
+        );
+      });
 
-      expect(next.mock.calls[0][0]).toEqual(
-        boom.internal('No OAuth public key found!'),
-      );
-      expect(verifySignature).not.toHaveBeenCalled();
-    });
-
-    it('fires the next function with an error when verifyJwt throws', async () => {
-      const req = {
-        get: jest.fn(key => {
-          if (key === 'Authorization') {
-            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
-          }
-
-          return null;
-        }),
-        walletData: {
-          publicKey,
-        },
-      };
-
-      verifyJwt.mockImplementationOnce(() =>
-        Promise.reject(boom.unauthorized('Not allowed!')),
-      );
-
-      await authenticationMiddleware(req, {}, next);
-
-      expect(next.mock.calls[0][0]).toEqual(boom.unauthorized('Not allowed!'));
-      expect(verifySignature).not.toHaveBeenCalled();
+      it('calls next with an internal server error error', async () => {
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(next).toHaveBeenLastCalledWith(
+          boom.internal('Authorize middleware: Database lookup failed'),
+        );
+      });
     });
   });
 });
