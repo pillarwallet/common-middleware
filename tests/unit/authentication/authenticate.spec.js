@@ -12,9 +12,6 @@ const verifyJwt = require('../../../lib/authentication/mechanisms/verifyJwt');
 jest.mock('../../../lib/authentication/mechanisms/verifySignature');
 jest.mock('../../../lib/authentication/mechanisms/verifyJwt');
 
-const authenticationMiddleware = authenticationMiddlewareSource({
-  oAuthPublicKey: 'abc123',
-});
 const authenticationMiddlewareNoPublicKey = authenticationMiddlewareSource();
 
 const ecSecp256k1 = new EC('secp256k1');
@@ -23,13 +20,23 @@ const privateKey = keys.getPrivate().toString('hex');
 const publicKey = keys.getPublic().encode('hex');
 
 describe('The Authentication Middleware', () => {
+  const User = {
+    findOne: jest.fn(),
+  };
+  const authenticationMiddleware = authenticationMiddlewareSource({
+    models: { User },
+    oAuthPublicKey: 'abc123',
+  });
   let next;
+
+  User.findOne.mockImplementation(() => Promise.resolve({}));
 
   beforeEach(() => {
     next = jest.fn();
   });
 
   afterEach(() => {
+    User.findOne.mockClear();
     next.mockClear();
   });
 
@@ -206,9 +213,14 @@ describe('The Authentication Middleware', () => {
       expect(verifySignature).not.toHaveBeenCalled();
     });
 
-    it('adds username to request object when JWT verification is successful', async () => {
-      const username = 'unique-username';
-      const token = jwt.sign({ uuid: username }, 'abc123');
+    describe('user lookup', () => {
+      const registrationId = 'abc-123';
+      const user = {
+        id: 'def-456',
+        registrationId,
+        username: 'username',
+      };
+      const token = jwt.sign({ sub: registrationId }, 'abc123');
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -218,32 +230,72 @@ describe('The Authentication Middleware', () => {
         }),
         walletData: {},
       };
-      const setUsername = jest.fn();
+      const setUserData = jest.fn();
 
-      Object.defineProperty(req, 'username', {
-        set: setUsername,
+      Object.defineProperty(req, 'userData', {
+        set: setUserData,
       });
 
-      verifyJwt.mockImplementationOnce((...args) =>
-        Promise.resolve(
-          require.requireActual(
-            '../../../lib/authentication/mechanisms/verifyJwt',
-          )(...args),
-        ),
-      );
+      beforeEach(() => {
+        verifyJwt.mockImplementationOnce((...args) =>
+          Promise.resolve(
+            require.requireActual(
+              '../../../lib/authentication/mechanisms/verifyJwt',
+            )(...args),
+          ),
+        );
+      });
 
-      await authenticationMiddleware(req, {}, next);
+      afterEach(() => {
+        setUserData.mockClear();
+        verifyJwt.mockReset();
+      });
 
-      expect(setUsername.mock.calls[0][0]).toBe(username);
-      expect(next).toHaveBeenCalledWith();
+      it('adds user data to request object when JWT verification is successful', async () => {
+        User.findOne.mockImplementationOnce(() => Promise.resolve(user));
 
-      // Check call order
-      const [verifyCallIdx] = verifyJwt.mock.invocationCallOrder;
-      const [setUsernameIdx] = setUsername.mock.invocationCallOrder;
-      const [nextCallIdx] = next.mock.invocationCallOrder;
+        await authenticationMiddleware(req, {}, next);
 
-      expect(verifyCallIdx).toBeLessThan(setUsernameIdx);
-      expect(setUsernameIdx).toBeLessThan(nextCallIdx);
+        expect(User.findOne).toHaveBeenCalledWith({ registrationId });
+
+        expect(setUserData.mock.calls[0][0]).toBe(user);
+        expect(next).toHaveBeenCalledWith();
+
+        // Check call order
+        const [verifyCallIdx] = verifyJwt.mock.invocationCallOrder;
+        const [setUserDataIdx] = setUserData.mock.invocationCallOrder;
+        const [nextCallIdx] = next.mock.invocationCallOrder;
+
+        expect(verifyCallIdx).toBeLessThan(setUserDataIdx);
+        expect(setUserDataIdx).toBeLessThan(nextCallIdx);
+      });
+
+      it('calls next with an unauthorized error when user cannot be found', async () => {
+        User.findOne.mockImplementationOnce(() => Promise.resolve(null));
+
+        await authenticationMiddleware(req, {}, next);
+
+        expect(next).toHaveBeenCalledTimes(1);
+
+        const [err] = next.mock.calls[0];
+        expect(err).toBeInstanceOf(Error);
+        expect(err.output.statusCode).toBe(401);
+      });
+
+      it('calls next with an internal server error when user lookup fails', async () => {
+        User.findOne.mockImplementationOnce(() =>
+          Promise.reject(new Error('Lookup failed')),
+        );
+
+        await authenticationMiddleware(req, {}, next);
+
+        expect(next).toHaveBeenCalledTimes(1);
+
+        const [err] = next.mock.calls[0];
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toBe('Lookup failed');
+        expect(err.output.statusCode).toBe(500);
+      });
     });
 
     it('does not call the verifyJwt module when missing the `oAuthPublicKey` property', async () => {
