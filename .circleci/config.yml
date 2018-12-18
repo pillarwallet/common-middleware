@@ -25,6 +25,23 @@ jobs:
           name: Test
           command: npm test
 
+  whitesource:
+    working_directory: ~/common-middleware
+    docker:
+      - image: circleci/openjdk:8-node-browsers
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/common-middleware/workspace
+      - run :
+          name: Setup WhiteSource
+          command: curl -LJO https://github.com/whitesource/fs-agent-distribution/raw/master/standAlone/wss_agent.sh
+      - run:
+          name: execute whitesource
+          command: |
+            cd .whitesource/
+            chmod +x wss_agent.sh && ./wss_agent.sh -apiKey $WHITESOURCE_API_KEY -c ./whitesource-fs-agent.config  -project common-middleware -f files.list
+
   publish:
     working_directory: ~/common-middleware
     docker:
@@ -52,6 +69,10 @@ workflows:
   test_and_publish:
     jobs:
       - test
+      - whitesource:
+          filters:
+            branches:
+              only: feature/add-whitesource
       - publish:
           requires:
             - test
