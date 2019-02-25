@@ -117,7 +117,13 @@ describe('The Authentication Middleware', () => {
 
     it('returns a 400 when no wallet data was found', () => {
       const req = {
-        get: jest.fn(() => null),
+        get: jest.fn(key => {
+          if (key === 'X-API-Signature') {
+            return signedPayload.signature;
+          }
+
+          return null;
+        }),
         body: payloadToBeSigned,
       };
 
