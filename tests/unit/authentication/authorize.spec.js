@@ -30,6 +30,7 @@ describe('Authorize', () => {
   const Wallet = {
     findOne: jest.fn(),
   };
+  const walletFindOneSort = jest.fn();
   const options = {
     logger,
     models: {
@@ -89,12 +90,15 @@ describe('Authorize', () => {
         },
         userData: user,
       };
-      Wallet.findOne.mockImplementation(() => Promise.resolve(wallet));
+      Wallet.findOne.mockImplementation(() => ({
+        sort: walletFindOneSort.mockResolvedValue(wallet),
+      }));
     });
 
     afterEach(() => {
       next.mockClear();
       Wallet.findOne.mockClear();
+      walletFindOneSort.mockClear();
     });
 
     it('calls next', async () => {
@@ -116,6 +120,9 @@ describe('Authorize', () => {
         id: 'wallet-id',
         userId,
       };
+
+      Wallet.findOne.mockReset();
+      Wallet.findOne.mockImplementation(() => Promise.resolve(wallet));
 
       await middleware(req, res, next);
 
@@ -150,7 +157,7 @@ describe('Authorize', () => {
       expect(next).toBeCalledWith(boom.unauthorized());
     });
 
-    it('calls next with an unauthorized error when walletData.id does not equal the one resolved', async () => {
+    it('calls next with an unauthorized error when walletData.id does not exist', async () => {
       /**
        * `walletData` should be set by [getWallet, authenticate] middleware
        */
@@ -167,6 +174,9 @@ describe('Authorize', () => {
         },
       };
 
+      Wallet.findOne.mockReset();
+      Wallet.findOne.mockImplementation(() => Promise.resolve(null));
+
       await middleware(req, res, next);
 
       expect(next).toBeCalledTimes(1);
@@ -175,7 +185,9 @@ describe('Authorize', () => {
 
     describe('when wallet cannot be found', () => {
       beforeEach(async () => {
-        Wallet.findOne.mockImplementationOnce(() => Promise.resolve(null));
+        Wallet.findOne.mockImplementation(() => ({
+          sort: walletFindOneSort.mockResolvedValue(null),
+        }));
 
         await middleware(req, res, next);
       });
@@ -196,16 +208,18 @@ describe('Authorize', () => {
 
     describe('when database lookup fails', () => {
       beforeEach(async () => {
-        Wallet.findOne.mockImplementationOnce(() =>
-          Promise.reject(new Error('User lookup failed')),
-        );
+        Wallet.findOne.mockImplementation(() => ({
+          sort: walletFindOneSort.mockRejectedValue(
+            new Error('Wallet lookup failed'),
+          ),
+        }));
 
         await middleware(req, res, next);
       });
 
       it('logs error', () => {
         expect(logger.error).toHaveBeenCalledWith(
-          new Error('User lookup failed'),
+          new Error('Wallet lookup failed'),
           'Authorize middleware: Database lookup failed',
         );
       });
