@@ -29,6 +29,7 @@ describe('Authorize', () => {
   };
   const Wallet = {
     findOne: jest.fn(),
+    findFirstCreated: jest.fn(),
   };
   const options = {
     logger,
@@ -89,12 +90,15 @@ describe('Authorize', () => {
         },
         userData: user,
       };
-      Wallet.findOne.mockImplementation(() => Promise.resolve(wallet));
+
+      Wallet.findOne.mockImplementationOnce(() => Promise.resolve(wallet));
+      Wallet.findFirstCreated.mockImplementation(() => Promise.resolve(wallet));
     });
 
     afterEach(() => {
       next.mockClear();
-      Wallet.findOne.mockClear();
+      Wallet.findOne.mockReset();
+      Wallet.findFirstCreated.mockReset();
     });
 
     it('calls next', async () => {
@@ -107,15 +111,20 @@ describe('Authorize', () => {
     it('adds `walletData` to the request object', async () => {
       await middleware(req, res, next);
 
-      expect(Wallet.findOne).toBeCalledWith({ userId: req.userData.id });
+      expect(Wallet.findFirstCreated).toBeCalledWith({
+        userId: req.userData.id,
+      });
       expect(req.walletData).toBe(wallet);
     });
 
     it('replaces `walletData` on the request object when it exists', async () => {
       req.walletData = {
-        id: 'another-wallet-id',
-        userId: 'another-user-id',
+        id: 'wallet-id',
+        userId,
       };
+
+      Wallet.findOne.mockReset();
+      Wallet.findOne.mockImplementation(() => Promise.resolve(wallet));
 
       await middleware(req, res, next);
 
@@ -150,9 +159,35 @@ describe('Authorize', () => {
       expect(next).toBeCalledWith(boom.unauthorized());
     });
 
+    it('calls next with an unauthorized error when walletData.id does not exist', async () => {
+      /**
+       * `walletData` should be set by [getWallet, authenticate] middleware
+       */
+      req = {
+        get: key => {
+          if (key === 'Authorization') {
+            return 'Bearer foo';
+          }
+          return undefined;
+        },
+        userData: user,
+        walletData: {
+          id: 'random-id',
+        },
+      };
+
+      Wallet.findOne.mockReset();
+      Wallet.findOne.mockImplementation(() => Promise.resolve(null));
+
+      await middleware(req, res, next);
+
+      expect(next).toBeCalledTimes(1);
+      expect(next).toBeCalledWith(boom.unauthorized());
+    });
+
     describe('when wallet cannot be found', () => {
       beforeEach(async () => {
-        Wallet.findOne.mockImplementationOnce(() => Promise.resolve(null));
+        Wallet.findFirstCreated.mockImplementation(() => Promise.resolve(null));
 
         await middleware(req, res, next);
       });
@@ -165,7 +200,7 @@ describe('Authorize', () => {
       });
 
       it('calls next with an unauthorized error', async () => {
-        expect(Wallet.findOne).toBeCalledTimes(1);
+        expect(Wallet.findFirstCreated).toBeCalledTimes(1);
         expect(next).toBeCalledTimes(1);
         expect(next).toHaveBeenCalledWith(boom.unauthorized());
       });
@@ -173,8 +208,8 @@ describe('Authorize', () => {
 
     describe('when database lookup fails', () => {
       beforeEach(async () => {
-        Wallet.findOne.mockImplementationOnce(() =>
-          Promise.reject(new Error('User lookup failed')),
+        Wallet.findFirstCreated.mockImplementation(() =>
+          Promise.reject(new Error('Wallet lookup failed')),
         );
 
         await middleware(req, res, next);
@@ -182,7 +217,7 @@ describe('Authorize', () => {
 
       it('logs error', () => {
         expect(logger.error).toHaveBeenCalledWith(
-          new Error('User lookup failed'),
+          new Error('Wallet lookup failed'),
           'Authorize middleware: Database lookup failed',
         );
       });
