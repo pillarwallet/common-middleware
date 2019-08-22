@@ -113,8 +113,8 @@ describe('Authorize', () => {
 
     it('replaces `walletData` on the request object when it exists', async () => {
       req.walletData = {
-        id: 'another-wallet-id',
-        userId: 'another-user-id',
+        id: 'wallet-id',
+        userId,
       };
 
       await middleware(req, res, next);
@@ -145,6 +145,29 @@ describe('Authorize', () => {
       };
 
       middleware(req, res, next);
+
+      expect(next).toBeCalledTimes(1);
+      expect(next).toBeCalledWith(boom.unauthorized());
+    });
+
+    it('calls next with an unauthorized error when walletData.id does not equal the one resolved', async () => {
+      /**
+       * `walletData` should be set by [getWallet, authenticate] middleware
+       */
+      req = {
+        get: key => {
+          if (key === 'Authorization') {
+            return 'Bearer foo';
+          }
+          return undefined;
+        },
+        userData: user,
+        walletData: {
+          id: 'random-id',
+        },
+      };
+
+      await middleware(req, res, next);
 
       expect(next).toBeCalledTimes(1);
       expect(next).toBeCalledWith(boom.unauthorized());
