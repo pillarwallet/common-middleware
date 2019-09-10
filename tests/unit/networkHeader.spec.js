@@ -25,10 +25,8 @@ describe('Network Header middleware', () => {
   let req;
   const res = {};
   const next = jest.fn();
-  let middleware;
 
   beforeEach(() => {
-    middleware = networkHeader();
     req = {
       get: jest.fn().mockReturnValue('dev'),
     };
@@ -44,18 +42,18 @@ describe('Network Header middleware', () => {
   });
 
   it('returns a middlware function', () => {
-    expect(typeof middleware).toBe('function');
-    expect(middleware).toHaveLength(3);
+    expect(typeof networkHeader).toBe('function');
+    expect(networkHeader).toHaveLength(3);
   });
 
   it('pass the headers checks', () => {
-    middleware(req, res, next);
+    networkHeader(req, res, next);
 
     expect(req.get.mock.calls[0][0]).toEqual('Network');
   });
 
   it('calls next', () => {
-    middleware(req, res, next);
+    networkHeader(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
   });
@@ -65,7 +63,7 @@ describe('Network Header middleware', () => {
       req = {
         get: jest.fn().mockReturnValue(null),
       };
-      middleware(req, res, next);
+      networkHeader(req, res, next);
     });
 
     it('calls next with a bad request error', () => {
@@ -82,7 +80,7 @@ describe('Network Header middleware', () => {
       req = {
         get: jest.fn().mockReturnValue('INVALID'),
       };
-      middleware(req, res, next);
+      networkHeader(req, res, next);
     });
 
     it('calls next with a bad request error', () => {
