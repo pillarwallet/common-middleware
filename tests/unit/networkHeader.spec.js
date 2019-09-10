@@ -30,7 +30,7 @@ describe('Network Header middleware', () => {
   beforeEach(() => {
     middleware = networkHeader();
     req = {
-      get: jest.fn().mockReturnValue('Dev'),
+      get: jest.fn().mockReturnValue('dev'),
     };
   });
 
