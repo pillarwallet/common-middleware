@@ -19,6 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+const networkHeader = require('./lib/networkHeader');
 const accessControlHeaders = require('./lib/accessControlHeaders');
 const errorHandler = require('./lib/errorHandler');
 const authenticate = require('./lib/authentication/authenticate');
@@ -29,4 +30,5 @@ module.exports = {
   authenticate,
   authorize,
   errorHandler,
+  networkHeader,
 };
