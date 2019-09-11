@@ -1,6 +1,6 @@
 {
   "name": "@pillarwallet/common-middleware",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Common middleware for Node.js apps",
   "main": "index.js",
   "scripts": {
