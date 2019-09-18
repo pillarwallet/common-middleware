@@ -28,9 +28,11 @@ const jwt = require('jsonwebtoken');
 const authenticationMiddlewareSource = require('../../../lib/authentication/authenticate');
 
 const verifySignature = require('../../../lib/authentication/mechanisms/verifySignature');
+const verifyJwtBlacklist = require('../../../lib/authentication/mechanisms/verifyJwtBlacklist');
 const verifyJwt = require('../../../lib/authentication/mechanisms/verifyJwt');
 
 jest.mock('../../../lib/authentication/mechanisms/verifySignature');
+jest.mock('../../../lib/authentication/mechanisms/verifyJwtBlacklist');
 jest.mock('../../../lib/authentication/mechanisms/verifyJwt');
 
 const authenticationMiddlewareNoPublicKey = authenticationMiddlewareSource();
@@ -44,19 +46,26 @@ describe('The Authentication Middleware', () => {
   const User = {
     findOne: jest.fn(),
   };
+  const AccessTokenBlacklist = {
+    findOne: jest.fn(),
+  };
   const authenticationMiddleware = authenticationMiddlewareSource({
-    models: { User },
+    models: { User, AccessTokenBlacklist },
     oAuthPublicKey: 'abc123',
   });
   let next;
 
-  User.findOne.mockImplementation(() => Promise.resolve({}));
-
   beforeEach(() => {
+    User.findOne.mockImplementation(() => Promise.resolve({}));
+    AccessTokenBlacklist.findOne.mockImplementation(() =>
+      Promise.resolve(null),
+    );
+
     next = jest.fn();
   });
 
   afterEach(() => {
+    AccessTokenBlacklist.findOne.mockClear();
     User.findOne.mockClear();
     next.mockClear();
   });
@@ -182,6 +191,7 @@ describe('The Authentication Middleware', () => {
 
   describe('When verifying a token', () => {
     beforeEach(() => {
+      verifyJwtBlacklist.mockClear();
       verifyJwt.mockClear();
       verifySignature.mockClear();
     });
@@ -196,12 +206,10 @@ describe('The Authentication Middleware', () => {
           return null;
         }),
         oAuthPublicKey: 'somemassivesecret',
-        walletData: {
-          publicKey,
-        },
       };
 
       verifyJwt.mockImplementationOnce(() => Promise.resolve({ uuid: 'uuid' }));
+      verifyJwtBlacklist.mockImplementationOnce(() => Promise.resolve());
 
       await authenticationMiddleware(req, {}, next);
 
@@ -213,9 +221,14 @@ describe('The Authentication Middleware', () => {
         'jk3b4jk32b4kb24jb2kb4hjk23b4hk23',
         'abc123',
       );
+      expect(verifyJwtBlacklist).toHaveBeenCalledWith(
+        'jk3b4jk32b4kb24jb2kb4hjk23b4hk23',
+        AccessTokenBlacklist,
+        undefined,
+      );
     });
 
-    it('calls the verifyJwt module when an Authorization header found', async () => {
+    it('calls the verifyJwt and verifyJwtBlacklist module when an Authorization header found', async () => {
       const req = {
         get: jest.fn(key => {
           if (key === 'Authorization') {
@@ -225,9 +238,6 @@ describe('The Authentication Middleware', () => {
           return null;
         }),
         oAuthPublicKey: 'somethingsecret',
-        walletData: {
-          publicKey,
-        },
       };
 
       await authenticationMiddleware(req, {}, next);
@@ -236,6 +246,11 @@ describe('The Authentication Middleware', () => {
       expect(verifyJwt).toHaveBeenCalledWith(
         '1a2b3c3d4e5f6g7h8i9j0k',
         'abc123',
+      );
+      expect(verifyJwtBlacklist).toHaveBeenCalledWith(
+        '1a2b3c3d4e5f6g7h8i9j0k',
+        AccessTokenBlacklist,
+        undefined,
       );
       expect(verifySignature).not.toHaveBeenCalled();
     });
@@ -255,7 +270,6 @@ describe('The Authentication Middleware', () => {
           }
           return null;
         }),
-        walletData: {},
       };
       const setUserData = jest.fn();
 
@@ -271,10 +285,19 @@ describe('The Authentication Middleware', () => {
             )(...args),
           ),
         );
+
+        verifyJwtBlacklist.mockImplementationOnce((...args) =>
+          Promise.resolve(
+            require.requireActual(
+              '../../../lib/authentication/mechanisms/verifyJwtBlacklist',
+            )(...args),
+          ),
+        );
       });
 
       afterEach(() => {
         setUserData.mockClear();
+        verifyJwtBlacklist.mockReset();
         verifyJwt.mockReset();
       });
 
@@ -290,10 +313,14 @@ describe('The Authentication Middleware', () => {
 
         // Check call order
         const [verifyCallIdx] = verifyJwt.mock.invocationCallOrder;
+        const [
+          verifyTokenBlacklistCallIdx,
+        ] = verifyJwtBlacklist.mock.invocationCallOrder;
         const [setUserDataIdx] = setUserData.mock.invocationCallOrder;
         const [nextCallIdx] = next.mock.invocationCallOrder;
 
-        expect(verifyCallIdx).toBeLessThan(setUserDataIdx);
+        expect(verifyCallIdx).toBeLessThan(verifyTokenBlacklistCallIdx);
+        expect(verifyTokenBlacklistCallIdx).toBeLessThan(setUserDataIdx);
         expect(setUserDataIdx).toBeLessThan(nextCallIdx);
       });
 
@@ -334,14 +361,12 @@ describe('The Authentication Middleware', () => {
 
           return null;
         }),
-        walletData: {
-          publicKey,
-        },
       };
 
       await authenticationMiddlewareNoPublicKey(req, {}, next);
 
       expect(verifyJwt).not.toHaveBeenCalled();
+      expect(verifyJwtBlacklist).not.toHaveBeenCalled();
       expect(verifySignature).not.toHaveBeenCalled();
     });
 
@@ -354,9 +379,6 @@ describe('The Authentication Middleware', () => {
 
           return null;
         }),
-        walletData: {
-          publicKey,
-        },
       };
 
       await authenticationMiddlewareNoPublicKey(req, {}, next);
@@ -364,6 +386,7 @@ describe('The Authentication Middleware', () => {
       expect(next.mock.calls[0][0]).toEqual(
         boom.internal('No OAuth public key found!'),
       );
+      expect(verifyJwtBlacklist).not.toHaveBeenCalled();
       expect(verifySignature).not.toHaveBeenCalled();
     });
 
@@ -376,9 +399,6 @@ describe('The Authentication Middleware', () => {
 
           return null;
         }),
-        walletData: {
-          publicKey,
-        },
       };
 
       verifyJwt.mockImplementationOnce(() =>
@@ -388,6 +408,29 @@ describe('The Authentication Middleware', () => {
       await authenticationMiddleware(req, {}, next);
 
       expect(next.mock.calls[0][0]).toEqual(boom.unauthorized('Not allowed!'));
+      expect(verifyJwtBlacklist).not.toHaveBeenCalled();
+      expect(verifySignature).not.toHaveBeenCalled();
+    });
+
+    it('fires the next function with an error when verifyJwtBlacklist throws', async () => {
+      const req = {
+        get: jest.fn(key => {
+          if (key === 'Authorization') {
+            return 'Bearer 1a2b3c3d4e5f6g7h8i9j0k';
+          }
+
+          return null;
+        }),
+      };
+
+      verifyJwtBlacklist.mockImplementationOnce(() =>
+        Promise.reject(boom.unauthorized('Not allowed!')),
+      );
+
+      await authenticationMiddleware(req, {}, next);
+
+      expect(next.mock.calls[0][0]).toEqual(boom.unauthorized('Not allowed!'));
+      expect(verifyJwt).toHaveBeenCalled();
       expect(verifySignature).not.toHaveBeenCalled();
     });
   });
