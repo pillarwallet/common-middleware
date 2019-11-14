@@ -28,10 +28,6 @@ describe('The Verify JWT Blacklist function', () => {
     findOne: jest.fn(),
   };
 
-  const logger = {
-    error: jest.fn(),
-  };
-
   beforeEach(() => {
     AccessTokenBlacklist.findOne.mockImplementation(() =>
       Promise.resolve(null),
@@ -44,11 +40,7 @@ describe('The Verify JWT Blacklist function', () => {
   });
 
   it('should successfully verify a JWT against db', async () => {
-    const result = await verifyJwtBlacklist(
-      token,
-      AccessTokenBlacklist,
-      logger,
-    );
+    const result = await verifyJwtBlacklist(token, AccessTokenBlacklist);
 
     expect(result).toEqual('Access token valid');
   });
@@ -62,19 +54,11 @@ describe('The Verify JWT Blacklist function', () => {
 
     it('returns an error object if token is invalid', async () => {
       try {
-        await verifyJwtBlacklist(token, AccessTokenBlacklist, logger);
+        await verifyJwtBlacklist(token, AccessTokenBlacklist);
       } catch (err) {
         expect(err).toBeInstanceOf(Error);
         expect(err.message).toBe('Unauthorized');
         expect(err.output.statusCode).toBe(401);
-      }
-    });
-
-    it('logs error if logger is defined', async () => {
-      try {
-        await verifyJwtBlacklist(token, AccessTokenBlacklist, logger);
-      } catch (err) {
-        expect(logger.error).toHaveBeenCalledWith('Access token invalidated');
       }
     });
   });
@@ -89,7 +73,7 @@ describe('The Verify JWT Blacklist function', () => {
 
     it('returns an error object if token is invalid', async () => {
       try {
-        await verifyJwtBlacklist(token, AccessTokenBlacklist, logger);
+        await verifyJwtBlacklist(token, AccessTokenBlacklist);
       } catch (err) {
         expect(err).toBeInstanceOf(Error);
         expect(err.message).toBe('Token lookup failed.');
