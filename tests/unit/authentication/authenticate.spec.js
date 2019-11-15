@@ -224,7 +224,6 @@ describe('The Authentication Middleware', () => {
       expect(verifyJwtBlacklist).toHaveBeenCalledWith(
         'jk3b4jk32b4kb24jb2kb4hjk23b4hk23',
         AccessTokenBlacklist,
-        undefined,
       );
     });
 
@@ -250,7 +249,6 @@ describe('The Authentication Middleware', () => {
       expect(verifyJwtBlacklist).toHaveBeenCalledWith(
         '1a2b3c3d4e5f6g7h8i9j0k',
         AccessTokenBlacklist,
-        undefined,
       );
       expect(verifySignature).not.toHaveBeenCalled();
     });

@@ -23,40 +23,28 @@ const boom = require('boom');
 const authorize = require('../../../lib/authentication/authorize');
 
 describe('Authorize', () => {
-  const logger = {
-    error: jest.fn(),
-    warn: jest.fn(),
-  };
   const Wallet = {
     findOne: jest.fn(),
     findFirstCreated: jest.fn(),
   };
   const options = {
-    logger,
     models: {
       Wallet,
     },
   };
 
-  afterEach(() => {
-    logger.error.mockClear();
-    logger.warn.mockClear();
-  });
-
   it('is a function', () => {
     expect(typeof authorize).toBe('function');
   });
 
-  it('throws an error when not constructed with logger and models', () => {
+  it('throws an error when not constructed with models', () => {
     expect.assertions(2);
 
     try {
       authorize();
     } catch (e) {
       expect(e).toBeInstanceOf(Error);
-      expect(e.message).toBe(
-        'logger, models.User and models.Wallet are required',
-      );
+      expect(e.message).toBe('models.User and models.Wallet are required');
     }
   });
 
@@ -192,13 +180,6 @@ describe('Authorize', () => {
         await middleware(req, res, next);
       });
 
-      it('logs a warning', () => {
-        expect(logger.warn).toHaveBeenCalledWith(
-          { userId },
-          'Wallet record not found',
-        );
-      });
-
       it('calls next with an unauthorized error', async () => {
         expect(Wallet.findFirstCreated).toBeCalledTimes(1);
         expect(next).toBeCalledTimes(1);
@@ -213,13 +194,6 @@ describe('Authorize', () => {
         );
 
         await middleware(req, res, next);
-      });
-
-      it('logs error', () => {
-        expect(logger.error).toHaveBeenCalledWith(
-          new Error('Wallet lookup failed'),
-          'Authorize middleware: Database lookup failed',
-        );
       });
 
       it('calls next with an internal server error error', async () => {
