@@ -61,6 +61,7 @@ describe('Authorize', () => {
     const wallet = {
       id: 'wallet-id',
       userId,
+      disabled: false,
     };
     const res = {};
     const next = jest.fn();
@@ -109,12 +110,19 @@ describe('Authorize', () => {
       req.walletData = {
         id: 'wallet-id',
         userId,
+        disabled: false,
       };
 
       Wallet.findOne.mockReset();
       Wallet.findOne.mockImplementation(() => Promise.resolve(wallet));
 
       await middleware(req, res, next);
+
+      expect(Wallet.findOne).toBeCalledWith({
+        _id: req.walletData.id,
+        userId: req.userData.id,
+        disabled: false,
+      });
 
       expect(req.walletData).toBe(wallet);
     });
@@ -182,6 +190,26 @@ describe('Authorize', () => {
 
       it('calls next with an unauthorized error', async () => {
         expect(Wallet.findFirstCreated).toBeCalledTimes(1);
+        expect(next).toBeCalledTimes(1);
+        expect(next).toHaveBeenCalledWith(boom.unauthorized());
+      });
+    });
+
+    describe('when `walletData` on the request object is disabled', () => {
+      beforeEach(async () => {
+        req.walletData = {
+          id: 'wallet-id',
+          userId,
+          disabled: true,
+        };
+        Wallet.findOne.mockReset();
+        Wallet.findOne.mockImplementation(() => Promise.resolve(null));
+
+        await middleware(req, res, next);
+      });
+
+      it('calls next with an unauthorized error', async () => {
+        expect(Wallet.findOne).toBeCalledTimes(1);
         expect(next).toBeCalledTimes(1);
         expect(next).toHaveBeenCalledWith(boom.unauthorized());
       });
