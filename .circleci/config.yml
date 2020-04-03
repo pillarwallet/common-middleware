@@ -61,7 +61,7 @@ jobs:
             .circleci/announcePublish.sh "Common Middleware" "$(node -e "console.log(require('./package.json').name)")@$(node -e "console.log(require('./package.json').version)")"
       - slack/status:
           fail_only: true
-          failure_message: "Triggered by: *${CIRCLE_USERNAME}* \n\n Ooops! here's an error log, the *$CIRCLE_JOB* job has failed! :circleci-fail:"
+          failure_message: "Triggered by: *${CIRCLE_USERNAME}* \n\n Ooops! The *$CIRCLE_JOB* job has failed! :circleci-fail:"
           only_for_branches: master
           webhook: "${SLACK_WEBHOOK_URL}"
 
