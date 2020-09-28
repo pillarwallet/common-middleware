@@ -23,7 +23,7 @@
     "testEnvironment": "node"
   },
   "dependencies": {
-    "@pillarwallet/plr-auth-sdk": "1.1.2-84",
+    "@pillarwallet/plr-auth-sdk": "1.1.2-101",
     "boom": "7.2.0",
     "jsonwebtoken": "8.3.0"
   },
