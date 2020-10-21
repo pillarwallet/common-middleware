@@ -22,7 +22,7 @@ SOFTWARE.
 const { sign } = require('@pillarwallet/plr-auth-sdk');
 const uuid = require('uuid/v4');
 const EC = require('elliptic').ec;
-const boom = require('boom');
+const boom = require('@hapi/boom');
 const verify = require('../../../../lib/authentication/mechanisms/verifySignature');
 
 const ecSecp256k1 = new EC('secp256k1');

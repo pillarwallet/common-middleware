@@ -24,17 +24,17 @@
   },
   "dependencies": {
     "@pillarwallet/plr-auth-sdk": "1.1.2-113",
-    "boom": "7.2.0",
-    "jsonwebtoken": "8.4.0"
+    "@hapi/boom": "9.1.0",
+    "jsonwebtoken": "8.5.1"
   },
   "devDependencies": {
     "elliptic": "6.4.1",
-    "eslint": "4.19.1",
+    "eslint": "^4.19.1",
     "eslint-config-airbnb-base": "13.0.0",
-    "eslint-config-prettier": "2.9.0",
-    "eslint-plugin-import": "2.13.0",
-    "eslint-plugin-jest": "21.18.0",
-    "eslint-plugin-prettier": "2.6.2",
+    "eslint-config-prettier": "^6.13.0",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-jest": "^21.18.0",
+    "eslint-plugin-prettier": "^2.6.2",
     "jest": "23.6.0",
     "jest-cli": "23.6.0",
     "prettier": "1.14.0",

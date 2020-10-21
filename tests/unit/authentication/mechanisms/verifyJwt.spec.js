@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 const jwt = require('jsonwebtoken');
-const boom = require('boom');
+const boom = require('@hapi/boom');
 
 const verify = require('../../../../lib/authentication/mechanisms/verifyJwt');
 
