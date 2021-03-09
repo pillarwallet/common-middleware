@@ -28,7 +28,7 @@
     "jsonwebtoken": "8.5.1"
   },
   "devDependencies": {
-    "elliptic": "6.4.1",
+    "elliptic": "6.5.4",
     "eslint": "^4.19.1",
     "eslint-config-airbnb-base": "13.0.0",
     "eslint-config-prettier": "^6.13.0",
